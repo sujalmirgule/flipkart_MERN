@@ -35,19 +35,67 @@ const OrderDetails = () => {
                         {order && order.user && order.shippingInfo && (
                             <div className="flex flex-col gap-4 max-w-6xl mx-auto">
 
-                                <div className="flex bg-white shadow rounded-sm min-w-full">
-                                    <div className="sm:w-1/2 border-r">
-                                        <div className="flex flex-col gap-3 my-8 mx-10">
-                                            <h3 className="font-medium text-lg">Delivery Address</h3>
-                                            <h4 className="font-medium">{order.user.name}</h4>
-                                            <p className="text-sm">{`${order.shippingInfo.address}, ${order.shippingInfo.city}, ${order.shippingInfo.state} - ${order.shippingInfo.pincode}`}</p>
+                                <div className="flex flex-col sm:flex-row bg-white shadow rounded-sm min-w-full">
+                                    <div className="sm:w-1/2 sm:border-r border-b sm:border-b-0">
+                                        <div className="flex flex-col gap-3 my-6 sm:my-8 mx-6 sm:mx-10">
+                                            <h3 className="font-medium text-lg border-b pb-2 text-gray-800">Delivery Address</h3>
+                                            <h4 className="font-semibold text-gray-800">{order.user.name}</h4>
+                                            <p className="text-sm text-gray-600 leading-relaxed">{`${order.shippingInfo.address}, ${order.shippingInfo.city}, ${order.shippingInfo.state} - ${order.shippingInfo.pincode}`}</p>
                                             <div className="flex gap-2 text-sm">
-                                                <p className="font-medium">Email</p>
-                                                <p>{order.user.email}</p>
+                                                <p className="font-medium text-gray-700">Email:</p>
+                                                <p className="text-gray-600">{order.user.email}</p>
                                             </div>
                                             <div className="flex gap-2 text-sm">
-                                                <p className="font-medium">Phone Number</p>
-                                                <p>{order.shippingInfo.phoneNo}</p>
+                                                <p className="font-medium text-gray-700">Phone Number:</p>
+                                                <p className="text-gray-600">{order.shippingInfo.phoneNo}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="sm:w-1/2">
+                                        <div className="flex flex-col gap-3 my-6 sm:my-8 mx-6 sm:mx-10">
+                                            <h3 className="font-medium text-lg border-b pb-2 text-gray-800">Payment & Summary</h3>
+                                            <div className="flex items-center justify-between text-sm py-1">
+                                                <span className="text-gray-600 font-medium">Payment Method:</span>
+                                                <span className="font-semibold text-gray-900 bg-gray-100 px-2.5 py-1 rounded">
+                                                    {order.paymentInfo?.method || "UPI / Online"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm py-1">
+                                                <span className="text-gray-600 font-medium">Payment Status:</span>
+                                                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full uppercase ${
+                                                    order.paymentInfo?.status === "PAID" || order.paymentInfo?.status === "Paid"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : order.paymentInfo?.status === "FAILED" || order.paymentInfo?.status === "Failed"
+                                                        ? "bg-red-100 text-red-700"
+                                                        : "bg-amber-100 text-amber-800"
+                                                }`}>
+                                                    {order.paymentInfo?.status || "Pending"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm py-1">
+                                                <span className="text-gray-600 font-medium">Order Status:</span>
+                                                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                                                    order.orderStatus === "Delivered"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : order.orderStatus === "Cancelled"
+                                                        ? "bg-red-100 text-red-700"
+                                                        : "bg-blue-100 text-primary-blue"
+                                                }`}>
+                                                    {order.orderStatus}
+                                                </span>
+                                            </div>
+                                            {order.paymentInfo?.id && (
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs py-1 gap-1">
+                                                    <span className="text-gray-500 font-medium">Transaction ID:</span>
+                                                    <span className="font-mono text-gray-700 bg-gray-50 px-2 py-0.5 rounded border select-all truncate max-w-xs">
+                                                        {order.paymentInfo.id}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center justify-between text-base pt-3 border-t font-semibold">
+                                                <span className="text-gray-800">Total Amount:</span>
+                                                <span className="text-primary-blue text-lg">₹{order.totalPrice?.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>

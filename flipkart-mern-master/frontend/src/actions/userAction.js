@@ -36,6 +36,10 @@ import {
     ALL_USERS_SUCCESS,
     ALL_USERS_REQUEST,
 } from '../constants/userConstants';
+import { RESET_CART } from '../constants/cartConstants';
+import { RESET_WISHLIST } from '../constants/wishlistConstants';
+import { RESET_SAVE_FOR_LATER } from '../constants/saveForLaterConstants';
+import { loadCart, mergeGuestCart } from './cartAction';
 import axios from 'axios';
 
 // Login User
@@ -61,10 +65,12 @@ export const loginUser = (email, password) => async (dispatch) => {
             payload: data.user,
         });
 
+        dispatch(mergeGuestCart());
+
     } catch (error) {
         dispatch({
             type: LOGIN_USER_FAIL,
-            payload: error.response.data.message,
+            payload: error.response?.data?.message || error.message,
         });
     }
 };
@@ -84,6 +90,8 @@ export const registerUser = (userData) => async (dispatch) => {
             type: REGISTER_USER_SUCCESS,
             payload: data.user,
         });
+
+        dispatch(mergeGuestCart());
 
     } catch (error) {
         dispatch({
@@ -106,10 +114,12 @@ export const loadUser = () => async (dispatch) => {
             payload: data.user,
         });
 
+        dispatch(loadCart());
+
     } catch (error) {
         dispatch({
             type: LOAD_USER_FAIL,
-            payload: error.response.data.message,
+            payload: error.response?.data?.message || error.message,
         });
     }
 };
@@ -118,11 +128,24 @@ export const loadUser = () => async (dispatch) => {
 export const logoutUser = () => async (dispatch) => {
     try {
         await axios.get('/api/v1/logout');
+        localStorage.removeItem('cartItems');
+        localStorage.removeItem('shippingInfo');
+        localStorage.removeItem('wishlistItems');
+        localStorage.removeItem('saveForLaterItems');
+
         dispatch({ type: LOGOUT_USER_SUCCESS });
+        dispatch({ type: RESET_CART });
+        dispatch({ type: RESET_WISHLIST });
+        dispatch({ type: RESET_SAVE_FOR_LATER });
     } catch (error) {
+        localStorage.removeItem('cartItems');
+        localStorage.removeItem('shippingInfo');
+        localStorage.removeItem('wishlistItems');
+        localStorage.removeItem('saveForLaterItems');
+
         dispatch({
             type: LOGOUT_USER_FAIL,
-            payload: error.response.data.message,
+            payload: error.response?.data?.message || error.message,
         });
     }
 };

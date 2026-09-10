@@ -1,7 +1,7 @@
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import Slider from 'react-slick';
 import { clearErrors, getProductDetails, getSimilarProducts, newReview } from '../../actions/productAction';
 import { NextBtn, PreviousBtn } from '../Home/Banner/Banner';
@@ -34,6 +34,7 @@ const ProductDetails = () => {
     const { enqueueSnackbar } = useSnackbar();
     const params = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // reviews toggle
     const [open, setOpen] = useState(false);
@@ -45,6 +46,7 @@ const ProductDetails = () => {
     const { success, error: reviewError } = useSelector((state) => state.newReview);
     const { cartItems } = useSelector((state) => state.cart);
     const { wishlistItems } = useSelector((state) => state.wishlist);
+    const { isAuthenticated, user } = useSelector((state) => state.user);
 
     const settings = {
         autoplay: true,
@@ -71,16 +73,45 @@ const ProductDetails = () => {
         }
     }
 
-    const reviewSubmitHandler = () => {
-        if (rating === 0 || !comment.trim()) {
-            enqueueSnackbar("Empty Review", { variant: "error" });
+    const handleReviewOpen = () => {
+        if (!isAuthenticated) {
+            enqueueSnackbar("Please login to write a review", { variant: "info" });
+            navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
             return;
         }
-        const formData = new FormData();
-        formData.set("rating", rating);
-        formData.set("comment", comment);
-        formData.set("productId", productId);
-        dispatch(newReview(formData));
+        const existingReview = product.reviews?.find(
+            (rev) => (rev.user?._id || rev.user)?.toString() === user?._id?.toString()
+        );
+        if (existingReview) {
+            setRating(existingReview.rating);
+            setComment(existingReview.comment || "");
+        } else {
+            setRating(0);
+            setComment("");
+        }
+        setOpen(true);
+    };
+
+    const reviewSubmitHandler = () => {
+        if (!isAuthenticated) {
+            enqueueSnackbar("Please login to submit a review", { variant: "error" });
+            navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+            return;
+        }
+        if (!rating || Number(rating) === 0) {
+            enqueueSnackbar("Please select a rating star", { variant: "error" });
+            return;
+        }
+        if (!comment.trim()) {
+            enqueueSnackbar("Please write a review comment", { variant: "error" });
+            return;
+        }
+        const reviewData = {
+            rating: Number(rating),
+            comment: comment.trim(),
+            productId: productId,
+        };
+        dispatch(newReview(reviewData));
         setOpen(false);
     }
 
@@ -101,7 +132,11 @@ const ProductDetails = () => {
 
     const buyNow = () => {
         addToCartHandler();
-        navigate('/shipping');
+        if (!isAuthenticated) {
+            navigate('/login?redirect=shipping');
+        } else {
+            navigate('/shipping');
+        }
     }
 
     useEffect(() => {
@@ -306,7 +341,7 @@ const ProductDetails = () => {
                                     <div className="w-full mt-4 rounded-sm border flex flex-col">
                                         <div className="flex justify-between items-center border-b px-6 py-4">
                                             <h1 className="text-2xl font-medium">Ratings & Reviews</h1>
-                                            <button onClick={handleDialogClose} className="shadow bg-primary-yellow text-white px-4 py-2 rounded-sm hover:shadow-lg">Rate Product</button>
+                                            <button onClick={handleReviewOpen} className="shadow bg-primary-yellow text-white px-4 py-2 rounded-sm hover:shadow-lg">Rate Product</button>
                                         </div>
 
                                         <Dialog
@@ -317,10 +352,11 @@ const ProductDetails = () => {
                                             <DialogTitle className="border-b">Submit Review</DialogTitle>
                                             <DialogContent className="flex flex-col m-1 gap-4">
                                                 <Rating
-                                                    onChange={(e) => setRating(e.target.value)}
-                                                    value={rating}
+                                                    name="rating-input"
+                                                    onChange={(e, val) => setRating(val || 0)}
+                                                    value={Number(rating)}
                                                     size='large'
-                                                    precision={0.5}
+                                                    precision={1}
                                                 />
                                                 <TextField
                                                     label="Review"

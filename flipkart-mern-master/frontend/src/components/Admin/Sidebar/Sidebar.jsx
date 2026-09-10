@@ -5,6 +5,8 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import GroupIcon from '@mui/icons-material/Group';
 import ReviewsIcon from '@mui/icons-material/Reviews';
 import AddBoxIcon from '@mui/icons-material/AddBox';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import PaymentIcon from '@mui/icons-material/Payment';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import CloseIcon from '@mui/icons-material/Close';
@@ -44,6 +46,16 @@ const navMenu = [
         icon: <ReviewsIcon />,
         label: "Reviews",
         ref: "/admin/reviews",
+    },
+    {
+        icon: <PaymentIcon />,
+        label: "Payments",
+        ref: "/admin/payments",
+    },
+    {
+        icon: <AccountBalanceWalletIcon />,
+        label: "Payment Settings",
+        ref: "/admin/payment/settings",
     },
     {
         icon: <AccountBoxIcon />,

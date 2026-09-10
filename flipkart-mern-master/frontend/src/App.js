@@ -34,6 +34,9 @@ import UpdateProduct from './components/Admin/UpdateProduct';
 import UserTable from './components/Admin/UserTable';
 import UpdateUser from './components/Admin/UpdateUser';
 import ReviewsTable from './components/Admin/ReviewsTable';
+import PaymentSettings from './components/Admin/PaymentSettings';
+import PaymentsTable from './components/Admin/PaymentsTable';
+import OrderFailed from './components/Cart/OrderFailed';
 import Wishlist from './components/Wishlist/Wishlist';
 import NotFound from './components/NotFound';
 
@@ -73,7 +76,7 @@ function App() {
   // disable right click
   window.addEventListener("contextmenu", (e) => e.preventDefault());
   window.addEventListener("keydown", (e) => {
-    if (e.keyCode == 123) e.preventDefault();
+    if (e.keyCode === 123) e.preventDefault();
     if (e.ctrlKey && e.shiftKey && e.keyCode === 73) e.preventDefault();
     if (e.ctrlKey && e.shiftKey && e.keyCode === 74) e.preventDefault();
   });
@@ -115,8 +118,12 @@ function App() {
           </ProtectedRoute>
         } ></Route>
 
-        <Route path="/orders/success" element={<OrderSuccess success={true} />} />
-        <Route path="/orders/failed" element={<OrderSuccess success={false} />} />
+        <Route path="/orders/success" element={<ProtectedRoute><OrderSuccess success={true} /></ProtectedRoute>} />
+        <Route path="/order/success/:orderId" element={<ProtectedRoute><OrderSuccess success={true} /></ProtectedRoute>} />
+        <Route path="/order/success" element={<ProtectedRoute><OrderSuccess success={true} /></ProtectedRoute>} />
+        <Route path="/orders/failed" element={<OrderFailed />} />
+        <Route path="/order/failed/:orderId" element={<OrderFailed />} />
+        <Route path="/order/failed" element={<OrderFailed />} />
         {/* order process */}
 
         <Route path="/order/:id" element={
@@ -236,6 +243,22 @@ function App() {
           <ProtectedRoute isAdmin={true}>
             <Dashboard activeTab={5}>
               <ReviewsTable />
+            </Dashboard>
+          </ProtectedRoute>
+        } ></Route>
+
+        <Route path="/admin/payments" element={
+          <ProtectedRoute isAdmin={true}>
+            <Dashboard activeTab={6}>
+              <PaymentsTable />
+            </Dashboard>
+          </ProtectedRoute>
+        } ></Route>
+
+        <Route path="/admin/payment/settings" element={
+          <ProtectedRoute isAdmin={true}>
+            <Dashboard activeTab={7}>
+              <PaymentSettings />
             </Dashboard>
           </ProtectedRoute>
         } ></Route>

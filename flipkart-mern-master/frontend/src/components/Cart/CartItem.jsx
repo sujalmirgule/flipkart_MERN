@@ -1,6 +1,6 @@
 import { useSnackbar } from 'notistack';
 import { useDispatch } from 'react-redux';
-import { addItemsToCart, removeItemsFromCart } from '../../actions/cartAction';
+import { updateCartQuantity, removeItemsFromCart } from '../../actions/cartAction';
 import { getDeliveryDate, getDiscount } from '../../utils/functions';
 import { saveForLater } from '../../actions/saveForLaterAction';
 import { Link } from 'react-router-dom';
@@ -10,23 +10,32 @@ const CartItem = ({ product, name, seller, price, cuttedPrice, image, stock, qua
     const dispatch = useDispatch();
     const { enqueueSnackbar } = useSnackbar();
 
-    const increaseQuantity = (id, quantity, stock) => {
-        const newQty = quantity + 1;
-        if (quantity >= stock) {
-            enqueueSnackbar("Maximum Order Quantity", { variant: "warning" });
+    const increaseQuantity = async (id, currentQty, availableStock) => {
+        if (currentQty >= availableStock) {
+            enqueueSnackbar(`Only ${availableStock} items available in stock`, { variant: "warning" });
             return;
-        };
-        dispatch(addItemsToCart(id, newQty));
+        }
+        const newQty = currentQty + 1;
+        const res = await dispatch(updateCartQuantity(id, newQty));
+        if (res && !res.success && res.message) {
+            enqueueSnackbar(res.message, { variant: "warning" });
+        }
     }
 
-    const decreaseQuantity = (id, quantity) => {
-        const newQty = quantity - 1;
-        if (quantity <= 1) return;
-        dispatch(addItemsToCart(id, newQty));
+    const decreaseQuantity = async (id, currentQty) => {
+        if (currentQty <= 1) {
+            await removeCartItem(id);
+            return;
+        }
+        const newQty = currentQty - 1;
+        const res = await dispatch(updateCartQuantity(id, newQty));
+        if (res && !res.success && res.message) {
+            enqueueSnackbar(res.message, { variant: "warning" });
+        }
     }
     
-    const removeCartItem = (id) => {
-        dispatch(removeItemsFromCart(id));
+    const removeCartItem = async (id) => {
+        await dispatch(removeItemsFromCart(id));
         enqueueSnackbar("Product Removed From Cart", { variant: "success" });
     }
 
@@ -77,11 +86,38 @@ const CartItem = ({ product, name, seller, price, cuttedPrice, image, stock, qua
 
             {/* <!-- save for later --> */}
             <div className="flex justify-between pr-4 sm:pr-0 sm:justify-start sm:gap-6">
-                {/* <!-- quantity --> */}
-                <div className="flex gap-1 items-center">
-                    <span onClick={() => decreaseQuantity(product, quantity)} className="w-7 h-7 text-3xl font-light bg-gray-50 rounded-full border flex items-center justify-center cursor-pointer"><p>-</p></span>
-                    <input className="w-11 border outline-none text-center rounded-sm py-0.5 text-gray-700 font-medium text-sm qtyInput" value={quantity} disabled />
-                    <span onClick={() => increaseQuantity(product, quantity, stock)} className="w-7 h-7 text-xl font-light bg-gray-50 rounded-full border flex items-center justify-center cursor-pointer">+</span>
+                <div className="flex gap-1.5 items-center">
+                    <button
+                        type="button"
+                        onClick={() => decreaseQuantity(product, quantity)}
+                        disabled={quantity <= 1}
+                        title={quantity <= 1 ? "Minimum quantity reached. Use Remove to delete." : "Decrease quantity"}
+                        className={`w-7 h-7 text-base font-semibold rounded-full border border-gray-300 flex items-center justify-center transition select-none ${
+                            quantity <= 1 
+                                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" 
+                                : "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 cursor-pointer"
+                        }`}
+                    >
+                        -
+                    </button>
+                    <input
+                        className="w-11 border border-gray-300 outline-none text-center rounded-sm py-0.5 text-gray-800 font-medium text-sm qtyInput bg-white"
+                        value={quantity}
+                        readOnly
+                    />
+                    <button
+                        type="button"
+                        onClick={() => increaseQuantity(product, quantity, stock)}
+                        disabled={quantity >= stock}
+                        title={quantity >= stock ? "Maximum stock limit reached" : "Increase quantity"}
+                        className={`w-7 h-7 text-base font-semibold rounded-full border border-gray-300 flex items-center justify-center transition select-none ${
+                            quantity >= stock 
+                                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed" 
+                                : "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 cursor-pointer"
+                        }`}
+                    >
+                        +
+                    </button>
                 </div>
                 {/* <!-- quantity --> */}
                 {inCart && (

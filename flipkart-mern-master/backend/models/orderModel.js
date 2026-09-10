@@ -57,19 +57,48 @@ const orderSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    paymentInfo: {
-        id: {
+    payment: {
+        method: {
             type: String,
-            required: true
+            default: "UPI"
+        },
+        provider: {
+            type: String,
+            default: "UPI"
         },
         status: {
             type: String,
-            required: true
+            enum: [
+                "PENDING",
+                "PROCESSING",
+                "SUCCESS",
+                "FAILED",
+                "CANCELLED"
+            ],
+            default: "PENDING"
         },
+        transactionId: String,
+        gatewayOrderId: String,
+        gatewayPaymentId: String,
+        paidAt: Date,
+        amount: Number
+    },
+    paymentInfo: {
+        id: {
+            type: String,
+            default: ""
+        },
+        status: {
+            type: String,
+            default: "Pending"
+        },
+        method: {
+            type: String,
+            default: "UPI"
+        }
     },
     paidAt: {
         type: Date,
-        required: true
     },
     totalPrice: {
         type: Number,
@@ -87,6 +116,31 @@ const orderSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+});
+
+orderSchema.pre('save', function (next) {
+    if (this.payment) {
+        if (!this.paymentInfo) this.paymentInfo = {};
+        if (this.payment.transactionId && !this.paymentInfo.id) {
+            this.paymentInfo.id = this.payment.transactionId;
+        }
+        if (this.payment.status) {
+            this.paymentInfo.status = this.payment.status === "SUCCESS" ? "Paid" : (this.payment.status === "FAILED" ? "Failed" : "Pending");
+        }
+        if (this.payment.method) {
+            this.paymentInfo.method = this.payment.method;
+        }
+    }
+    if (this.paymentInfo && (!this.payment || !this.payment.transactionId)) {
+        if (!this.payment) this.payment = {};
+        if (this.paymentInfo.id) this.payment.transactionId = this.paymentInfo.id;
+        if (this.paymentInfo.status) {
+            const upStatus = String(this.paymentInfo.status).toUpperCase();
+            this.payment.status = upStatus === "PAID" ? "SUCCESS" : (upStatus === "FAILED" ? "FAILED" : "PENDING");
+        }
+        if (this.paymentInfo.method) this.payment.method = this.paymentInfo.method;
+    }
+    next();
 });
 
 module.exports = mongoose.model("Order", orderSchema);

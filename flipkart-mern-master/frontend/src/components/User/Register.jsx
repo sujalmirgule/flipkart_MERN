@@ -5,7 +5,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import { useSnackbar } from 'notistack';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearErrors, registerUser } from '../../actions/userAction';
 import BackdropLoader from '../Layouts/BackdropLoader';
@@ -16,9 +16,13 @@ const Register = () => {
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
     const { enqueueSnackbar } = useSnackbar();
 
-    const { loading, isAuthenticated, error } = useSelector((state) => state.user);
+    const redirectParam = new URLSearchParams(location.search).get("redirect");
+    const redirect = redirectParam ? decodeURIComponent(redirectParam) : "/";
+
+    const { loading, isAuthenticated, user: authUser, error } = useSelector((state) => state.user);
 
     const [user, setUser] = useState({
         name: "",
@@ -82,9 +86,15 @@ const Register = () => {
             dispatch(clearErrors());
         }
         if (isAuthenticated) {
-            navigate('/')
+            if (authUser && authUser.role === "admin") {
+                navigate("/admin/dashboard");
+            } else if (redirect && redirect !== "/" && !redirect.includes("orders") && !redirect.includes("order")) {
+                navigate(redirect.startsWith('/') ? redirect : `/${redirect}`);
+            } else {
+                navigate("/account");
+            }
         }
-    }, [dispatch, error, isAuthenticated, navigate, enqueueSnackbar]);
+    }, [dispatch, error, isAuthenticated, authUser, redirect, navigate, enqueueSnackbar]);
 
     return (
         <>
@@ -194,7 +204,7 @@ const Register = () => {
                                     </label>
                                 </div>
                                 <button type="submit" className="text-white py-3 w-full bg-primary-orange shadow hover:shadow-lg rounded-sm font-medium">Signup</button>
-                                <Link to="/login" className="hover:bg-gray-50 text-primary-blue text-center py-3 w-full shadow border rounded-sm font-medium">Existing User? Log in</Link>
+                                <Link to={`/login${location.search || ''}`} className="hover:bg-gray-50 text-primary-blue text-center py-3 w-full shadow border rounded-sm font-medium">Existing User? Log in</Link>
                             </div>
 
                         </form>

@@ -37,6 +37,46 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "user",
     },
+    addresses: [
+        {
+            name: {
+                type: String,
+                required: true,
+            },
+            phoneNo: {
+                type: String,
+                required: true,
+            },
+            pincode: {
+                type: String,
+                required: true,
+            },
+            address: {
+                type: String,
+                required: true,
+            },
+            city: {
+                type: String,
+                required: true,
+            },
+            state: {
+                type: String,
+                required: true,
+            },
+            landmark: {
+                type: String,
+                default: "",
+            },
+            addressType: {
+                type: String,
+                default: "Home",
+            },
+            isDefault: {
+                type: Boolean,
+                default: false,
+            }
+        }
+    ],
     createdAt: {
         type: Date,
         default: Date.now,

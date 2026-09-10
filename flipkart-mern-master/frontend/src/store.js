@@ -7,6 +7,7 @@ import { cartReducer } from './reducers/cartReducer';
 import { saveForLaterReducer } from './reducers/saveForLaterReducer';
 import { allOrdersReducer, myOrdersReducer, newOrderReducer, orderDetailsReducer, orderReducer, paymentStatusReducer } from './reducers/orderReducer';
 import { wishlistReducer } from './reducers/wishlistReducer';
+import { adminPaymentSettingsReducer, paymentConfigReducer } from './reducers/paymentReducer';
 
 const reducer = combineReducers({
     user: userReducer,
@@ -30,6 +31,8 @@ const reducer = combineReducers({
     reviews: productReviewsReducer,
     review: reviewReducer,
     wishlist: wishlistReducer,
+    paymentConfig: paymentConfigReducer,
+    adminPaymentSettings: adminPaymentSettingsReducer,
 });
 
 let initialState = {
@@ -37,9 +40,7 @@ let initialState = {
         cartItems: localStorage.getItem('cartItems')
             ? JSON.parse(localStorage.getItem('cartItems'))
             : [],
-        shippingInfo: localStorage.getItem("shippingInfo")
-            ? JSON.parse(localStorage.getItem("shippingInfo"))
-            : {},
+        shippingInfo: {},
     },
     saveForLater: {
         saveForLaterItems: localStorage.getItem('saveForLaterItems')

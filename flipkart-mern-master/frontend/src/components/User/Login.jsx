@@ -14,7 +14,7 @@ const Login = () => {
     const { enqueueSnackbar } = useSnackbar();
     const location = useLocation();
 
-    const { loading, isAuthenticated, error } = useSelector((state) => state.user);
+    const { loading, isAuthenticated, error, user } = useSelector((state) => state.user);
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -24,7 +24,8 @@ const Login = () => {
         dispatch(loginUser(email, password));
     }
 
-    const redirect = location.search ? location.search.split("=")[1] : "account";
+    const redirectParam = new URLSearchParams(location.search).get("redirect");
+    const redirect = redirectParam ? decodeURIComponent(redirectParam) : null;
 
     useEffect(() => {
         if (error) {
@@ -32,9 +33,15 @@ const Login = () => {
             dispatch(clearErrors());
         }
         if (isAuthenticated) {
-            navigate(`/${redirect}`)
+            if (user && user.role === "admin") {
+                navigate("/admin/dashboard");
+            } else if (redirect && !redirect.includes("orders") && !redirect.includes("order")) {
+                navigate(redirect.startsWith('/') ? redirect : `/${redirect}`);
+            } else {
+                navigate("/account");
+            }
         }
-    }, [dispatch, error, isAuthenticated, redirect, navigate, enqueueSnackbar]);
+    }, [dispatch, error, isAuthenticated, user, redirect, navigate, enqueueSnackbar]);
 
     return (
         <>
@@ -94,7 +101,7 @@ const Login = () => {
                             </form>
                             {/* <!-- input container --> */}
 
-                            <Link to="/register" className="font-medium text-sm text-primary-blue">New to Flipkart? Create an account</Link>
+                            <Link to={`/register${location.search || ''}`} className="font-medium text-sm text-primary-blue">New to Flipkart? Create an account</Link>
                         </div>
                         {/* <!-- edit info container --> */}
 

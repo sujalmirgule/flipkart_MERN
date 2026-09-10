@@ -1,19 +1,33 @@
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import MetaData from '../Layouts/MetaData';
 import CartItem from './CartItem';
 import EmptyCart from './EmptyCart';
 import PriceSidebar from './PriceSidebar';
 import SaveForLaterItem from './SaveForLaterItem';
+import { loadCart } from '../../actions/cartAction';
 
 const Cart = () => {
 
+    const dispatch = useDispatch();
     const navigate = useNavigate();
     const { cartItems } = useSelector((state) => state.cart);
     const { saveForLaterItems } = useSelector((state) => state.saveForLater);
+    const { isAuthenticated } = useSelector((state) => state.user);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            dispatch(loadCart());
+        }
+    }, [dispatch, isAuthenticated]);
 
     const placeOrderHandler = () => {
-        navigate('/login?redirect=shipping');
+        if (isAuthenticated) {
+            navigate('/shipping');
+        } else {
+            navigate('/login?redirect=shipping');
+        }
     }
 
     return (

@@ -264,3 +264,150 @@ exports.deleteUser = asyncErrorHandler(async (req, res, next) => {
         success: true
     });
 });
+
+// Get User Addresses
+exports.getUserAddresses = asyncErrorHandler(async (req, res, next) => {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+    res.status(200).json({
+        success: true,
+        addresses: user.addresses || [],
+    });
+});
+
+// Add New Address
+exports.addAddress = asyncErrorHandler(async (req, res, next) => {
+    const { name, phoneNo, pincode, address, city, state, landmark, addressType, isDefault } = req.body;
+
+    if (!name || !phoneNo || !pincode || !address || !city || !state) {
+        return next(new ErrorHandler("Please fill all required address fields", 400));
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    const shouldBeDefault = Boolean(isDefault) || user.addresses.length === 0;
+
+    if (shouldBeDefault) {
+        user.addresses.forEach((addr) => {
+            addr.isDefault = false;
+        });
+    }
+
+    user.addresses.push({
+        name,
+        phoneNo,
+        pincode,
+        address,
+        city,
+        state,
+        landmark: landmark || "",
+        addressType: addressType || "Home",
+        isDefault: shouldBeDefault,
+    });
+
+    await user.save({ validateBeforeSave: false });
+
+    res.status(201).json({
+        success: true,
+        addresses: user.addresses,
+    });
+});
+
+// Update Address
+exports.updateAddress = asyncErrorHandler(async (req, res, next) => {
+    const { name, phoneNo, pincode, address, city, state, landmark, addressType, isDefault } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    const addr = user.addresses.id(req.params.id);
+    if (!addr) {
+        return next(new ErrorHandler("Address not found", 404));
+    }
+
+    if (isDefault) {
+        user.addresses.forEach((a) => {
+            a.isDefault = false;
+        });
+    }
+
+    if (name !== undefined) addr.name = name;
+    if (phoneNo !== undefined) addr.phoneNo = phoneNo;
+    if (pincode !== undefined) addr.pincode = pincode;
+    if (address !== undefined) addr.address = address;
+    if (city !== undefined) addr.city = city;
+    if (state !== undefined) addr.state = state;
+    if (landmark !== undefined) addr.landmark = landmark;
+    if (addressType !== undefined) addr.addressType = addressType;
+    if (isDefault !== undefined) addr.isDefault = Boolean(isDefault);
+
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+        success: true,
+        addresses: user.addresses,
+    });
+});
+
+// Delete Address
+exports.deleteAddress = asyncErrorHandler(async (req, res, next) => {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    const addressIndex = user.addresses.findIndex((a) => a._id.toString() === req.params.id);
+    if (addressIndex === -1) {
+        return next(new ErrorHandler("Address not found", 404));
+    }
+
+    const wasDefault = user.addresses[addressIndex].isDefault;
+    user.addresses.splice(addressIndex, 1);
+
+    if (wasDefault && user.addresses.length > 0) {
+        user.addresses[0].isDefault = true;
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+        success: true,
+        addresses: user.addresses,
+    });
+});
+
+// Set Default Address
+exports.setDefaultAddress = asyncErrorHandler(async (req, res, next) => {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    let found = false;
+    user.addresses.forEach((a) => {
+        if (a._id.toString() === req.params.id) {
+            a.isDefault = true;
+            found = true;
+        } else {
+            a.isDefault = false;
+        }
+    });
+
+    if (!found) {
+        return next(new ErrorHandler("Address not found", 404));
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+        success: true,
+        addresses: user.addresses,
+    });
+});

@@ -109,7 +109,7 @@ export const newReview = (reviewData) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: NEW_REVIEW_FAIL,
-            payload: error.response.data.message,
+            payload: error.response && error.response.data.message ? error.response.data.message : error.message,
         });
     }
 }

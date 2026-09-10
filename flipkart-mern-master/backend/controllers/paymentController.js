@@ -3,7 +3,12 @@ const asyncErrorHandler = require('../middlewares/asyncErrorHandler');
 const paytm = require('paytmchecksum');
 const https = require('https');
 const Payment = require('../models/paymentModel');
+const PaymentSettings = require('../models/paymentSettingsModel');
+const Order = require('../models/orderModel');
+const Product = require('../models/productModel');
+const Cart = require('../models/cartModel');
 const ErrorHandler = require('../utils/errorHandler');
+const paymentService = require('../services/paymentService');
 const { v4: uuidv4 } = require('uuid');
 
 // exports.processPayment = asyncErrorHandler(async (req, res, next) => {
@@ -157,3 +162,244 @@ exports.getPaymentStatus = asyncErrorHandler(async (req, res, next) => {
         txn,
     });
 });
+
+// Get Public Payment Configuration (Safe for checkout & payment page)
+exports.getPaymentConfig = asyncErrorHandler(async (req, res, next) => {
+    const settings = await PaymentSettings.getSettings();
+
+    res.status(200).json({
+        success: true,
+        config: {
+            upiId: settings.upiId,
+            merchantName: settings.merchantName,
+            upiEnabled: Boolean(settings.upiEnabled),
+            qrPaymentEnabled: Boolean(settings.qrPaymentEnabled !== undefined ? settings.qrPaymentEnabled : settings.upiEnabled),
+            paytmEnabled: Boolean(settings.paytmEnabled),
+            phonePeEnabled: Boolean(settings.phonePeEnabled !== undefined ? settings.phonePeEnabled : settings.phonepeEnabled),
+            phonepeEnabled: Boolean(settings.phonePeEnabled !== undefined ? settings.phonePeEnabled : settings.phonepeEnabled),
+            googlePayEnabled: Boolean(settings.googlePayEnabled),
+            otherUpiEnabled: Boolean(settings.otherUpiEnabled !== undefined ? settings.otherUpiEnabled : true),
+            cashOnDeliveryEnabled: Boolean(settings.cashOnDeliveryEnabled !== undefined ? settings.cashOnDeliveryEnabled : true),
+            paymentMode: settings.paymentMode || 'development'
+        }
+    });
+});
+
+// Get Admin Payment Settings --- ADMIN
+exports.getAdminPaymentSettings = asyncErrorHandler(async (req, res, next) => {
+    const settings = await PaymentSettings.getSettings();
+
+    res.status(200).json({
+        success: true,
+        settings,
+    });
+});
+
+// Update Admin Payment Settings --- ADMIN
+exports.updateAdminPaymentSettings = asyncErrorHandler(async (req, res, next) => {
+    let settings = await PaymentSettings.getSettings();
+
+    const {
+        upiId,
+        merchantName,
+        upiEnabled,
+        qrPaymentEnabled,
+        paytmEnabled,
+        phonePeEnabled,
+        phonepeEnabled,
+        googlePayEnabled,
+        otherUpiEnabled,
+        cashOnDeliveryEnabled,
+        paymentMode,
+    } = req.body;
+
+    if (!merchantName || merchantName.trim().length === 0) {
+        return next(new ErrorHandler("Merchant / Receiver Name cannot be empty", 400));
+    }
+
+    const isUpiOrQrActive = (upiEnabled === true || qrPaymentEnabled === true || settings.upiEnabled || settings.qrPaymentEnabled);
+    if (isUpiOrQrActive && (!upiId || upiId.trim().length === 0)) {
+        return next(new ErrorHandler("UPI ID cannot be empty when UPI or QR payments are enabled", 400));
+    }
+
+    if (upiId && !upiId.includes('@')) {
+        return next(new ErrorHandler("Please enter a valid UPI ID (e.g. username@bank)", 400));
+    }
+
+    if (upiId) settings.upiId = upiId.trim();
+    settings.merchantName = merchantName.trim();
+    if (typeof upiEnabled === 'boolean') settings.upiEnabled = upiEnabled;
+    if (typeof qrPaymentEnabled === 'boolean') settings.qrPaymentEnabled = qrPaymentEnabled;
+    if (typeof paytmEnabled === 'boolean') settings.paytmEnabled = paytmEnabled;
+
+    const resolvedPhonePe = typeof phonePeEnabled === 'boolean' ? phonePeEnabled : (typeof phonepeEnabled === 'boolean' ? phonepeEnabled : undefined);
+    if (resolvedPhonePe !== undefined) {
+        settings.phonePeEnabled = resolvedPhonePe;
+        settings.phonepeEnabled = resolvedPhonePe;
+    }
+
+    if (typeof googlePayEnabled === 'boolean') settings.googlePayEnabled = googlePayEnabled;
+    if (typeof otherUpiEnabled === 'boolean') settings.otherUpiEnabled = otherUpiEnabled;
+    if (typeof cashOnDeliveryEnabled === 'boolean') settings.cashOnDeliveryEnabled = cashOnDeliveryEnabled;
+    if (paymentMode) settings.paymentMode = paymentMode;
+
+    await settings.save();
+
+    res.status(200).json({
+        success: true,
+        message: "Payment settings updated successfully",
+        settings,
+    });
+});
+
+// Create Order with Authoritative Amount & Stock Validation
+exports.createPaymentOrder = asyncErrorHandler(async (req, res, next) => {
+    const { shippingInfo, orderItems, paymentMethod = 'UPI', provider = 'UPI' } = req.body;
+
+    const order = await paymentService.createPaymentOrder({
+        userId: req.user._id,
+        shippingInfo,
+        orderItems,
+        paymentMethod,
+        provider
+    });
+
+    res.status(201).json({
+        success: true,
+        order,
+        message: "Order created successfully in PENDING payment state"
+    });
+});
+
+// Initiate Payment Intent / Deep Links
+exports.initiatePaymentIntent = asyncErrorHandler(async (req, res, next) => {
+    const { orderId, provider } = req.body;
+
+    if (!orderId) {
+        return next(new ErrorHandler("Order ID is required to initiate payment", 400));
+    }
+
+    const initiationData = await paymentService.initiatePayment({
+        orderId,
+        userId: req.user._id,
+        requestedProvider: provider
+    });
+
+    res.status(200).json({
+        success: true,
+        ...initiationData
+    });
+});
+
+// Safe Payment Status Polling Endpoint
+exports.getPaymentStatus = asyncErrorHandler(async (req, res, next) => {
+    const { orderId } = req.params;
+
+    const statusData = await paymentService.getPaymentStatus({
+        orderId,
+        userId: req.user._id,
+        isAdmin: req.user.role === 'admin'
+    });
+
+    res.status(200).json(statusData);
+});
+
+// Verify Payment Endpoint
+exports.verifyPayment = asyncErrorHandler(async (req, res, next) => {
+    const { orderId, transactionId, paymentId, signature } = req.body;
+
+    const result = await paymentService.verifyPayment({
+        orderId,
+        transactionId,
+        paymentId,
+        signature,
+        userId: req.user._id,
+        isAdmin: req.user.role === 'admin'
+    });
+
+    res.status(200).json(result);
+});
+
+// Idempotent Webhook Handler
+exports.handleWebhook = asyncErrorHandler(async (req, res, next) => {
+    const result = await paymentService.handleWebhook({
+        headers: req.headers,
+        body: req.body,
+        rawBody: req.rawBody
+    });
+
+    res.status(200).json(result);
+});
+
+// Admin: Get All Payments
+exports.getAdminPayments = asyncErrorHandler(async (req, res, next) => {
+    const result = await paymentService.getAdminPayments(req.query);
+
+    res.status(200).json(result);
+});
+
+// Admin: Get Payment Details
+exports.getAdminPaymentDetails = asyncErrorHandler(async (req, res, next) => {
+    const result = await paymentService.getAdminPaymentDetails(req.params.id);
+
+    res.status(200).json(result);
+});
+
+// Initiate UPI Payment & Prepare Order (Authoritative Amount & Stock Security - Backward Compatible)
+exports.initiateUpiPayment = asyncErrorHandler(async (req, res, next) => {
+    const { shippingInfo, orderItems, paymentMethod = 'UPI', provider = 'UPI' } = req.body;
+
+    const order = await paymentService.createPaymentOrder({
+        userId: req.user._id,
+        shippingInfo,
+        orderItems,
+        paymentMethod,
+        provider
+    });
+
+    const initiationData = await paymentService.initiatePayment({
+        orderId: order._id,
+        userId: req.user._id,
+        requestedProvider: provider || paymentMethod
+    });
+
+    res.status(201).json({
+        success: true,
+        order,
+        orderId: order._id,
+        totalPrice: order.totalPrice,
+        upiUri: initiationData.genericUpiUrl,
+        phonePeUrl: initiationData.phonePeUrl,
+        googlePayUrl: initiationData.googlePayUrl,
+        paytmUrl: initiationData.paytmUrl,
+        upiPayload: {
+            upiUri: initiationData.genericUpiUrl,
+            upiId: initiationData.merchantUpiId,
+            merchantName: initiationData.merchantName,
+            amount: order.totalPrice,
+            orderId: order._id,
+            method: paymentMethod || "UPI"
+        }
+    });
+});
+
+// Create Cash on Delivery (COD) Order (Authoritative Amount & Stock Security - Backward Compatible)
+exports.createCodOrder = asyncErrorHandler(async (req, res, next) => {
+    const { shippingInfo, orderItems } = req.body;
+
+    const order = await paymentService.createPaymentOrder({
+        userId: req.user._id,
+        shippingInfo,
+        orderItems,
+        paymentMethod: 'COD',
+        provider: 'Cash on Delivery'
+    });
+
+    res.status(201).json({
+        success: true,
+        order,
+        message: "Order placed successfully with Cash on Delivery"
+    });
+});
+
+
