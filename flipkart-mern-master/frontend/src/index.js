@@ -6,6 +6,13 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import store from './store';
 import { SnackbarProvider } from 'notistack';
+import axios from 'axios';
+
+// Global Axios configuration: send cookies with requests
+axios.defaults.withCredentials = true;
+if (process.env.REACT_APP_BACKEND_URL) {
+  axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL;
+}
 
 ReactDOM.render(
   <React.StrictMode>
