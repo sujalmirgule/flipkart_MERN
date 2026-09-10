@@ -32,16 +32,20 @@ const Login = () => {
             enqueueSnackbar(error, { variant: "error" });
             dispatch(clearErrors());
         }
-        if (isAuthenticated) {
-            if (user && user.role === "admin") {
-                navigate("/admin/dashboard");
-            } else if (redirect && !redirect.includes("orders") && !redirect.includes("order")) {
-                navigate(redirect.startsWith('/') ? redirect : `/${redirect}`);
+        if (isAuthenticated && !loading && user && user.role) {
+            if (user.role === "admin") {
+                const target = redirect && redirect.startsWith("/admin") ? redirect : "/admin/dashboard";
+                navigate(target, { replace: true });
             } else {
-                navigate("/account");
+                if (redirect && !redirect.startsWith("/admin") && redirect !== "/login" && redirect !== "/account") {
+                    const target = redirect.startsWith('/') ? redirect : `/${redirect}`;
+                    navigate(target, { replace: true });
+                } else {
+                    navigate("/", { replace: true });
+                }
             }
         }
-    }, [dispatch, error, isAuthenticated, user, redirect, navigate, enqueueSnackbar]);
+    }, [dispatch, error, isAuthenticated, user, loading, redirect, navigate, enqueueSnackbar]);
 
     return (
         <>

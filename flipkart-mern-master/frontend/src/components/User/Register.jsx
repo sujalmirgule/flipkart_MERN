@@ -85,16 +85,20 @@ const Register = () => {
             enqueueSnackbar(error, { variant: "error" });
             dispatch(clearErrors());
         }
-        if (isAuthenticated) {
-            if (authUser && authUser.role === "admin") {
-                navigate("/admin/dashboard");
-            } else if (redirect && redirect !== "/" && !redirect.includes("orders") && !redirect.includes("order")) {
-                navigate(redirect.startsWith('/') ? redirect : `/${redirect}`);
+        if (isAuthenticated && !loading && authUser && authUser.role) {
+            if (authUser.role === "admin") {
+                const target = redirect && redirect.startsWith("/admin") ? redirect : "/admin/dashboard";
+                navigate(target, { replace: true });
             } else {
-                navigate("/account");
+                if (redirect && redirect !== "/" && !redirect.startsWith("/admin") && redirect !== "/login" && redirect !== "/account") {
+                    const target = redirect.startsWith('/') ? redirect : `/${redirect}`;
+                    navigate(target, { replace: true });
+                } else {
+                    navigate("/", { replace: true });
+                }
             }
         }
-    }, [dispatch, error, isAuthenticated, authUser, redirect, navigate, enqueueSnackbar]);
+    }, [dispatch, error, isAuthenticated, authUser, loading, redirect, navigate, enqueueSnackbar]);
 
     return (
         <>
